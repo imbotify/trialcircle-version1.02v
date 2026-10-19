@@ -663,6 +663,20 @@ export type RestoreResult = {
   notRecoverable: string[];
 };
 
+function remapMediaAvatarUrl(
+  value: string | null,
+  mediaMap: Map<string, string>,
+): string | null {
+  if (!value) return null;
+
+  // Only rewrite CircleMap's internal media URLs.
+  const match = value.match(/^\/api\/media\/([^/?#]+)(.*)$/);
+  if (!match) return value;
+
+  const newMediaId = mediaMap.get(match[1]);
+  return newMediaId ? `/api/media/${newMediaId}${match[2]}` : null;
+}
+
 const chunked = <T,>(rows: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
@@ -760,7 +774,7 @@ export async function restoreFullBackup(user: User, raw: Obj): Promise<RestoreRe
           id: personMap.get(str(p.id)!)!,
           spaceId: spaceMap.get(str(p.spaceId)!)!,
           name: str(p.name),
-          avatarUrl: str(p.avatarUrl),
+          avatarUrl: remapMediaAvatarUrl(str(p.avatarUrl), mediaMap),
           tags: Array.isArray(p.tags) ? (p.tags.filter((t) => typeof t === "string") as string[]) : [],
           isMe: p.isMe === true,
           createdAt: date(p.createdAt),
